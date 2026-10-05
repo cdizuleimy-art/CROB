@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distressed ZIP Coverage Analysis</title>
+    <!-- Tailwind CSS for sleek, responsive styling -->
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
+        
+        <!-- Header -->
+        <header class="mb-8 border-b border-gray-200 pb-4">
+            <h1 class="text-3xl font-bold text-gray-900">Distressed ZIP Coverage Analysis</h1>
+            <p class="text-sm text-gray-600 mt-1">Compare your outreach event data to a distressed ZIP list and identify the least-served ZIP codes first.</p>
+        </header>
+
+        <!-- Main Input Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            <!-- Left Side Controls (Takes up 1 column on large screens) -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1" for="distressedZips">
+                        Distressed ZIP list <span class="text-xs font-normal text-gray-500">(paste any text; 5-digit ZIPs are extracted automatically)</span>
+                    </label>
+                    <textarea id="distressedZips" rows="6" class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-400" placeholder="Example: 90210, 10001, or paste a messy list of text containing 30303, etc."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1" for="csvFile">
+                        Outreach CSV file <span class="text-xs font-normal text-gray-500">(Requires headers containing "ZIP", "City", "Events", "Attendees" or "Views")</span>
+                    </label>
+                    <input type="file" id="csvFile" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="flex flex-col gap-2 mt-2">
+                    <button id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition text-sm shadow-sm">
+                        Analyze Coverage
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="defaultCsvBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 rounded-lg transition text-xs border border-gray-300">
+                            Load Default CSV
+                        </button>
+                        <button id="clearBtn" class="bg-white hover:bg-gray-50 text-red-600 font-medium py-2 px-3 rounded-lg transition text-xs border border-red-200">
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side KPI Counters (Takes up 2 columns on large screens) -->
+            <div class="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Distressed ZIPs</span>
+                    <span id="kpiDistressed" class="text-3xl font-bold text-gray-900 mt-2">0</span>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">ZIPs with outreach</span>
+                    <span id="kpiWithOutreach" class="text-3xl font-bold text-emerald-600 mt-2">0</span>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">ZIPs with no outreach</span>
+                    <span id="kpiNoOutreach" class="text-3xl font-bold text-red-600 mt-2">0</span>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Coverage rate</span>
+                    <span id="kpiRate" class="text-3xl font-bold text-blue-600 mt-2">0.0%</span>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Analysis Results Table Block -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-900">Ranked Priority List</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-xs font-semibold text-gray-600 uppercase border-b border-gray-200">
+                            <th class="px-6 py-3 w-16">Rank</th>
+                            <th class="px-6 py-3">ZIP</th>
+                            <th class="px-6 py-3">City</th>
+                            <th class="px-6 py-3 text-center">Events</th>
+                            <th class="px-6 py-3 text-center">Total Attendees/Views</th>
+                            <th class="px-6 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody" class="divide-y divide-gray-200 text-sm">
+                        <tr>
+                            <td colspan="6" class="px-6 py-10 text-center text-gray-400 italic">
+                                Paste distressed ZIPs, pick or load a CSV file, and run 'Analyze Coverage' to generate metrics.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Engine Scripts -->
+    <script>
+        // Store globally compiled map of data from parsed CSV strings
+        let outreachDataMap = {};
+
+        // DOM elements cache
+        const distressedZipsInput = document.getElementById('distressedZips');
+        const csvFileInput = document.getElementById('csvFile');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const defaultCsvBtn = document.getElementById('defaultCsvBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultsTableBody = document.getElementById('resultsTableBody');
+
+        // KPI Element hooks
+        const kpiDistressed = document.getElementById('kpiDistressed');
+        const kpiWithOutreach = document.getElementById('kpiWithOutreach');
+        const kpiNoOutreach = document.getElementById('kpiNoOutreach');
+        const kpiRate = document.getElementById('kpiRate');
+
+        // Sample static mock string simulating "outreach_events_clean_geocoded.csv"
+        const defaultCSVData = `ZIP,City,Events,Attendees
+90210,Beverly Hills,5,340
+10001,New York,12,1250
+30303,Atlanta,0,0
+60601,Chicago,8,910`;
+
+        // RegEx engine logic to snap up clean 5-digit sequences
+        function extractZips(rawText) {
+            const regex = /\b\d{5}\b/g;
+            const found = rawText.match(regex) || [];
+            return [...new Set(found)]; // deduplicate entries seamlessly
+        }
+
+        // Custom micro-parser mapping column positions smartly without third-party reliance
+        function parseCSVText(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length === 0) return {};
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+            
+            // Map column arrays cleanly
+            const zipIdx = headers.findIndex(h => h.includes('zip'));
+            const cityIdx = headers.findIndex(h => h.includes('city'));
+            const eventsIdx = headers.findIndex(h => h.includes('event'));
+            const attendeeIdx = headers.findIndex(h => h.includes('attendee') || h.includes('view'));
+
+            const dataMap = {};
+
+            for (let i = 1; i < lines.length; i++) {
+                // Split comma values safely while ignoring commas inside quote wrappers
+                const columns = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']|["']$/g, ''));
+                
+                if (zipIdx !== -1 && columns[zipIdx]) {
+                    const zip = columns[zipIdx].padStart(5, '0'); // Sanitize zip fragments
+                    const city = cityIdx !== -1 ? columns[cityIdx] : 'Unknown';
+                    const events = eventsIdx !== -1 ? parseInt(columns[eventsIdx], 10) || 0 : 0;
+                    const attendees = attendeeIdx !== -1 ? parseInt(columns[attendeeIdx], 10) || 0 : 0;
+
+                    if (dataMap[zip]) {
+                        dataMap[zip].events += events;
+                        dataMap[zip].attendees += attendees;
+                    } else {
+                        dataMap[zip] = { city, events, attendees };
+                    }
+                }
+            }
+            return dataMap;
+        }
+
+        // Hook system local storage file reads
+        csvFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
