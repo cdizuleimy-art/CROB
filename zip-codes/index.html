@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZIP Coverage Analysis</title>
+  <style>
+    :root {
+      --bg: #f3f8f5;
+      --surface: #ffffff;
+      --border: #d7e8df;
+      --text: #153126;
+      --muted: #536f62;
+      --brand: #1d6b4d;
+      --brand-strong: #144f3a;
+      --warn: #b75d1b;
+      --danger: #b42318;
+      --shadow: 0 12px 28px rgba(17, 49, 38, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at top left, #dfeee6 0%, transparent 35%),
+        radial-gradient(circle at bottom right, #edf8f3 0%, transparent 25%),
+        var(--bg);
+      color: var(--text);
+      padding: 18px;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .head {
+      background: linear-gradient(135deg, #e4f3eb 0%, #f9fcfa 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.5vw, 2rem);
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .body {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font: 500 0.92rem/1.5 Consolas, "Courier New", monospace;
+      background: #fbfefc;
+      color: var(--text);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      height: 42px;
+      padding: 0 15px;
+      background: var(--brand);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:hover { background: var(--brand-strong); }
+
+    button.secondary {
+      background: #ebf5ef;
+      color: var(--brand-strong);
+      border: 1px solid var(--border);
+    }
+
+    .status {
+      min-height: 1.2rem;
+      color: var(--warn);
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi {
+      background: linear-gradient(180deg, #f7fbf8 0%, #ffffff 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 12px;
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: none;
+    }
+
+    .kpi .value {
+      margin-top: 6px;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: auto;
+      max-height: 560px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e7efe9;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #edf7f1;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.76rem;
+      color: #24533f;
+      z-index: 1;
+    }
+
+    tr.zero td {
+      background: #fff2f1;
+      color: var(--danger);
+    }
+
+    @media (max-width: 980px) {
+      .grid, .kpis { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <div class="head">
+        <h1>ZIP Coverage Analysis</h1>
+        <div class="sub">Compare outreach event data against a distressed ZIP list and prioritize the least-served ZIP codes first.</div>
+      </div>
+
+      <div class="body">
+        <div class="grid">
+          <div class="field">
+            <label for="distressedInput">Distressed ZIP list</label>
+            <textarea id="distressedInput" placeholder="Paste your distressed ZIPs here (5-digit ZIPs extracted automatically)"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="csvFileInput">Outreach CSV</label>
+            <input id="csvFileInput" type="file" accept=".csv,text/csv" />
+            <div class="toolbar">
+              <button id="loadDefaultBtn" type="button">Load Default CSV</button>
+              <button id="analyzeBtn" type="button">Analyze Coverage</button>
+              <button id="clearBtn" type="button" class="secondary">Clear Results</button>
+            </div>
+            <div class="status" id="status"></div>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="label">Distressed ZIPs</div>
+            <div class="value" id="kpiDistressed">0</div>
+          </div>
+          <div class="kpi">
+            <div class="label">ZIPs with outreach</div>
+            <div class="value" id="kpiServed">0</div>
+          </div>
+          <div class="kpi">
+            <div class="label">ZIPs with no outreach</div>
+            <div class="value" id="kpiUnserved">0</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Coverage rate</div>
+            <div class="value" id="kpiCoverage">0.0%</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>ZIP</th>
+                <th>City</th>
+                <th>Events</th>
+                <th>Total Attendees/Views</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const distressedInputEl = document.getElementById("distressedInput");
+    const csvFileInputEl = document.getElementById("csvFileInput");
+    const resultsBodyEl = document.getElementById("resultsBody");
+
+    const kpiDistressedEl = document.getElementById("kpiDistressed");
+    const kpiServedEl = document.getElementById("kpiServed");
+    const kpiUnservedEl = document.getElementById("kpiUnserved");
+    const kpiCoverageEl = document.getElementById("kpiCoverage");
+
+    let loadedCsvText = "";
+
+    const defaultZips = `90046
+92060
+92536
+93108
+93435
+93605
+93928
+94929
+95033
+95305
+90063
+92061
+92539
+93205
+93442
+93610
+93930
+94930
+95039
+95306
+90068
+92065
+92548
+93207
+93444
+93614
+93932
+94933
+95041
+95309
+90077
+92066
+92549
+93222
+93445
+93621
+93933
+94937
+95043
+95310
+90210
+92070
+92561
+93224
+93446
+93623
+93940
+94938
+95060
+95311
+90263
+92082
+92590
+93225
+93447
+93628
+93950
+94939
+95061
+95318
+90265
+92086
+92676
+93226
+93448
+93633
+93953
+94940
+95062
+95321
+90290
+92230
+92678
+93238
+93449
+93634
+93954
+94941
+95063
+95325
+90704
+92239
+93001
+93240
+93450
+93636
+93955
+94942
+95064
+95327
+91008
+92256
+93002
+93243
+93451
+93637
+93960
+94945
+95065
+95329
+95427
+95501
+95563
+95651
+95728
+95947
+96011
+96055
+96101
+96140
+95428
+95503
+95564
+95656
+95735
+95948
+96013
+96056
+96103
+96141
+95429
+95511
+95565
+95658
+95736
+95949
+96014
+96057
+96104
+96142
+95432
+95514
+95567
+95661
+95746
+95954
+96015
+96058
+96105
+96143
+95435
+95519
+95568
+95663
+95747
+95956
+96016
+96059
+96106
+96145
+95437
+95521
+95569
+95664
+95762
+95958
+96017
+96061
+96107
+96146
+95441
+95524
+95570
+95665
+95765
+95959
+96019
+96062
+96108
+96148
+95443
+95525
+95571
+95666
+95910
+95960
+96020
+96063
+96109
+96150
+95445
+95526
+95573
+95667
+95914
+95962
+96021
+96064
+96110
+96151
+95449
+95527
+95585
+95669
+95915
+95965
+96022
+96065
+96111
+96152
+95450
+95528
+95587
+95672
+95916
+95966
+96023
+96067
+96112
+96155
+95451
+95531
+95589
+95675
+95917
+95967
+96024
+96068
+96113
+96156
+95453
+95536
+95595
+95677
+95919
+95968
+96025
+96069
+96114
+96158
+95454
+95537
+95601
+95678
+95922
+95969
+96027
+96071
+96115
+96160
+95456
+95538
+95602
+95679
+95923
+95971
+96028
+96073
+96116
+96161
+95457
+95540
+95603
+95681
+95924
+95972
+96029
+96074
+96117
+96162
+95458
+95542
+95604
+95682
+95925
+95973
+96031
+96075
+96118
+95459
+95543
+95607
+95684
+95926
+95974
+96032
+96076
+96119
+95460
+95545
+95613
+95685
+95927
+95975
+96033
+96078
+96120
+95461
+95546
+95614
+95689
+95928
+95977
+96034
+96079
+96121
+95463
+95547
+95619
+95699
+95929
+95978
+96035
+96080
+96122
+95464
+95548
+95623
+95701
+95930
+95979
+96037
+96084
+96123
+95466
+95549
+95629
+95703
+95934
+95980
+96038
+96085
+96124
+95467
+95550
+95631
+95709
+95935
+95983
+96039
+96086
+96125
+95468
+95551
+95633
+95712
+95936
+95984
+96040
+96087
+96126
+95469
+95552
+95634
+95713
+95937
+95986
+96041
+96088
+96128
+95470
+95553
+95635
+95714
+95938
+96001
+96044
+96089
+96129
+95481
+95554
+95636
+95715
+95939
+96002
+96046
+96090
+96130
+95482
+95555
+95640
+95717
+95940
+96003
+96047
+96091
+96132
+95485
+95556
+95642
+95720
+95941
+96006
+96048
+96092
+96133
+95488
+95558
+95644
+95721
+95942
+96007
+96050
+96093
+96134
+95490
+95559
+95646
+95722
+95944
+96008
+96051
+96094
+96135
+95493
+95560
+95648
+95724
+95945
+96009
+96052
+96096
+96136
+95494
+95562
+95650
+95726
+95946
+96010
+96054
+96097
+96137`;
+
+    distressedInputEl.value = defaultZips;
+
+    function parseDistressedZips(text) {
+      const matches = text.match(/\b\d{5}\b/g) || [];
+      return [...new Set(matches)].sort();
+    }
+
+    function parseCsvLine(line) {
+      const out = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          out.push(current);
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+
+      out.push(current);
+      return out;
+    }
+
+    function parseCsvRows(csvText) {
+      const lines = csvText
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .filter(line => line.trim().length > 0);
+
+      if (!lines.length) return [];
+
+      const headers = parseCsvLine(lines[0]).map(h => h.trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        const row = {};
+        headers.forEach((header, idx) => {
+          row[header] = (cols[idx] || "").trim();
+        });
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function normalizeZip(raw) {
+      const digits = String(raw || "").replace(/\D/g, "");
+      if (digits.length < 5) return "";
+      return digits.slice(0, 5);
+    }
+
+    function numeric(raw) {
+      const num = Number(String(raw || "").replace(/,/g, "").trim());
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function cityForZip(zip) {
+      const lookups = {
+        "90046": "Los Angeles, California",
+        "92060": "Palomar Mountain, California",
+        "92536": "Aguanga, California",
+        "93108": "Santa Barbara, California",
+        "93435": "Harmony, California",
+        "93605": "Big Creek, California",
+        "93928": "Jolon, California",
+        "94929": "Dillon Beach, California",
+        "95033": "Los Gatos, California",
+        "95305": "Big Oak Flat, California",
+        "90063": "Los Angeles, California",
+        "92061": "Pauma Valley, California",
+        "92539": "Anza, California",
+        "93205": "Bodfish, California",
+        "93442": "Morro Bay, California",
+        "93610": "Chowchilla, California",
+        "93930": "King City, California",
+        "94930": "Fairfax, California",
+        "95039": "Moss Landing, California",
+        "95306": "Catheys Valley, California",
+        "90068": "Los Angeles, California",
+        "92065": "Ramona, California",
+        "92548": "Homeland, California",
+        "93207": "California Hot Springs, California",
+        "93444": "Nipomo, California",
+        "93614": "Coarsegold, California",
+        "93932": "Lockwood, California",
+        "94933": "Forest Knolls, California",
+        "95041": "Mount Hermon, California",
+        "95309": "Chinese Camp, California",
+        "90077": "Los Angeles, California",
+        "92066": "Ranchita, California",
+        "92549": "Idyllwild, California",
+        "93222": "Pine Mountain Club, California",
+        "93445": "Oceano, California",
+        "93621": "Dunlap, California",
+        "93933": "Marina, California",
+        "94937": "Inverness, California",
+        "95043": "Paicines, California",
+        "95310": "Columbia, California",
+        "90210": "Beverly Hills, California",
+        "92070": "Santa Ysabel, California",
+        "92561": "Mountain Center, California",
+        "93224": "Fellows, California",
+        "93446": "Paso Robles, California",
+        "93623": "Fish Camp, California",
+        "93940": "Monterey, California",
+        "94938": "Lagunitas, California",
+        "95060": "Santa Cruz, California",
+        "95311": "Coulterville, California",
+        "90263": "Malibu, California",
+        "92082": "Valley Center, California",
+        "92590": "Temecula, California",
+        "93225": "Frazier Park, California",
+        "93447": "Paso Robles, California",
+        "93628": "Hume, California",
+        "93950": "Pacific Grove, California",
+        "94939": "Larkspur, California",
+        "95061": "Santa Cruz, California",
+        "95318": "El Portal, California",
+        "90265": "Malibu, California",
+        "92086": "Warner Springs, California",
+        "92676": "Silverado, California",
+        "93226": "Glennville, California",
+        "93448": "Pismo Beach, California",
+        "93633": "Kings Canyon National Pk, California",
+        "93953": "Pebble Beach, California",
+        "94940": "Marshall, California",
+        "95062": "Santa Cruz, California",
+        "95321": "Groveland, California",
+        "90290": "Topanga, California",
+        "92230": "Cabazon, California",
+        "92678": "Trabuco Canyon, California",
+        "93238": "Kernville, California",
+        "93449": "Pismo Beach, California",
+        "93634": "Lakeshore, California",
+        "93954": "San Lucas, California",
+        "94941": "Mill Valley, California",
+        "95063": "Santa Cruz, California",
+        "95325": "Hornitos, California",
+        "90704": "Avalon, California",
+        "92239": "Desert Center, California",
+        "93001": "Ventura, California",
+        "93240": "Lake Isabella, California",
+        "93450": "San Ardo, California",
+        "93636": "Madera, California",
+        "93955": "Seaside, California",
+        "94942": "Mill Valley, California",
+        "95064": "Santa Cruz, California",
+        "95327": "Jamestown, California",
+        "91008": "Duarte, California",
+        "92256": "Morongo Valley, California",
+        "93002": "Ventura, California",
+        "93243": "Lebec, California",
+        "93451": "San Miguel, California",
+        "93637": "Madera, California",
+        "93960": "Soledad, California",
+        "94945": "Novato, California",
+        "95065": "Santa Cruz, California",
+        "95329": "La Grange, California"
+      };
+
+      return lookups[zip] || "";
+    }
+
+    function computeCoverage(rows, distressedZips) {
+      const outreachByZip = new Map();
+
+      rows.forEach((row) => {
+        const zip = normalizeZip(row.ZipCode || row.extracted_zip || row.zip || row.ZIP || "");
+        if (!zip) return;
+
+        if (!outreachByZip.has(zip)) {
+          outreachByZip.set(zip, { events: 0, attendees: 0 });
+        }
+
+        const item = outreachByZip.get(zip);
+        item.events += 1;
+        item.attendees += numeric(row.AttendeesOrViews || row.Attendees || row.Views || row.attendees || "0");
+      });
+
+      const result = distressedZips.map((zip) => {
+        const item = outreachByZip.get(zip) || { events: 0, attendees: 0 };
+        return {
+          zip,
+          city: cityForZip(zip),
+          events: item.events,
+          attendees: item.attendees,
+          status: item.events > 0 ? "Served" : "Not Served"
+        };
+      });
+
+      result.sort((a, b) => {
+        if (a.events !== b.events) return a.events - b.events;
+        if (a.attendees !== b.attendees) return a.attendees - b.attendees;
+        return a.zip.localeCompare(b.zip);
+      });
+
+      return result;
+    }
+
+    function renderRows(rows) {
+      resultsBodyEl.innerHTML = "";
+
+      rows.forEach((row, idx) => {
+        const tr = document.createElement("tr");
+        if (row.events === 0) tr.classList.add("zero");
+
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${row.zip}</td>
+          <td>${row.city || "—"}</td>
+          <td>${row.events}</td>
+          <td>${Math.round(row.attendees).toLocaleString("en-US")}</td>
+          <td>${row.status}</td>
+        `;
+        resultsBodyEl.appendChild(tr);
+      });
+    }
+
+    function renderKpis(rows) {
+      const total = rows.length;
+      const served = rows.filter(r => r.events > 0).length;
+      const unserved = total - served;
+      const coverage = total ? (served / total) * 100 : 0;
+
+      kpiDistressedEl.textContent = String(total);
+      kpiServedEl.textContent = String(served);
+      kpiUnservedEl.textContent = String(unserved);
+      kpiCoverageEl.textContent = `${coverage.toFixed(1)}%`;
+    }
+
+    function clearResults() {
+      statusEl.textContent = "";
+      resultsBodyEl.innerHTML = "";
+      kpiDistressedEl.textContent = "0";
+      kpiServedEl.textContent = "0";
+      kpiUnservedEl.textContent = "0";
+      kpiCoverageEl.textContent = "0.0%";
+    }
+
+    function analyze() {
+      clearResults();
+
+      const distressed = parseDistressedZips(distressedInputEl.value);
+      if (!distressed.length) {
+        statusEl.textContent = "Paste at least one 5-digit ZIP code in the distressed list.";
+        return;
+      }
+
+      if (!loadedCsvText) {
+        statusEl.textContent = "Load your outreach CSV first or use the default CSV if available.";
+        return;
+      }
+
+      const rows = parseCsvRows(loadedCsvText);
+      if (!rows.length) {
+        statusEl.textContent = "CSV appears empty or could not be parsed.";
+        return;
+      }
+
+      const coverageRows = computeCoverage(rows, distressed);
+      renderKpis(coverageRows);
+      renderRows(coverageRows);
+      statusEl.textContent = `Analysis complete: ranked ${coverageRows.length} distressed ZIP codes from least served to most served.`;
+    }
+
+    async function loadDefaultCsv() {
+      statusEl.textContent = "Loading default outreach CSV...";
+      try {
+        const response = await fetch("outreach_events_clean_geocoded.csv");
+        if (!response.ok) throw new Error("HTTP " + response.status);
+
+        loadedCsvText = await response.text();
+        statusEl.textContent = "Default CSV loaded. Ready to analyze.";
+      } catch (err) {
+        loadedCsvText = "";
+        statusEl.textContent = "No default CSV was found in this folder. Use the file picker to load your outreach data.";
+      }
+    }
+
+    document.getElementById("loadDefaultBtn").addEventListener("click", loadDefaultCsv);
+
+    csvFileInputEl.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      loadedCsvText = await file.text();
+      statusEl.textContent = `Loaded CSV: ${file.name}`;
+    });
+
+    document.getElementById("analyzeBtn").addEventListener("click", analyze);
+    document.getElementById("clearBtn").addEventListener("click", clearResults);
+
+    // Optional auto-load if file exists in same folder
+    loadDefaultCsv();
+  </script>
+</body>
+</html>
